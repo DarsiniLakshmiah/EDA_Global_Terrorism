@@ -1,0 +1,145 @@
+---
+title: "Data Cleaning and pre-processing"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    number_sections: true
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r init , include=FALSE}
+# Loading necessary libraries
+
+library(ezids)
+```
+
+```{r setup, include=FALSE}
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+# knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+
+```
+### Data Pre-processing
+
+Reading the file and checking on the structure of the data.
+
+```{r}
+data <- read.xlsx("C:/Users/darsh/Desktop/Global_terrorism_raw_data.xlsx")
+
+head(data)
+str(data)
+
+```
+Checking on the column names in the dataset.
+
+```{r}
+column_names <- colnames(data)
+print(column_names)
+```
+Renaming the columns for better readability.
+
+```{r}
+names_to_rename <- c("iyear" = "Year",
+                      "imonth" = "Month",
+                      "iday" = "Day",
+                      "country_txt" = "Country",
+                      "provstate" = "State",
+                      "region_txt" = "Region",
+                      "attacktype1_txt" = "AttackType",
+                      "nkill" = "Killed",
+                      "nwound" = "Wounded",
+                      "gname" = "Group",
+                      "targtype1_txt" = "Target_type",
+                      "weaptype1_txt" = "Weapon_Type",
+                      "motive" = "Motive")
+
+# Loop through the names and rename the columns
+
+for (old_name in names(names_to_rename)) {
+  new_name <- names_to_rename[old_name]
+  colnames(data)[colnames(data) == old_name] <- new_name
+}
+```
+
+Selecting only the important columns from the dataset which is relevant for the analysis.
+```{r}
+
+data <- data[, c("Year", "Month", "Day", "Country", "State", "Region", 
+              "AttackType", "Killed", "Wounded", "Group", "Target_type", 
+              "Weapon_Type", "Motive","success")]
+
+```
+
+Checking if there is any NA values in the columns selected.
+
+Checking the dim and structure of the data : 181691 rows and 15 columns.
+```{r}
+head(data)
+colSums(is.na(data))
+
+column_names <- colnames(data)
+print(column_names)
+
+dim(data)
+str(data)
+```
+
+Including a calculative column.
+```{r}
+data$casualities <- data$Killed + data$Wounded
+
+colnames(data)
+```
+
+Handling the NA values.
+
+```{r}
+# Calculate median for the 'Killed','Wounded'and 'casualities' columns
+
+median_killed <- median(data$Killed, na.rm = TRUE)
+median_wounded <- median(data$Wounded, na.rm = TRUE)
+median_casualities <- median(data$casualities , na.rm = TRUE)
+
+# Replacing the NA values with the median
+
+data$Killed[is.na(data$Killed)] <- median_killed
+data$Wounded[is.na(data$Wounded)] <- median_wounded
+data$casualities[is.na(data$casualities)] <- median_casualities
+
+data$Motive[is.na(data$Motive)] <- "Unknown"
+
+sum(is.na(data$Killed))  
+sum(is.na(data$Wounded)) 
+sum(is.na(data$casualities))
+
+colSums(is.na(data))
+```
+```{r}
+str(data)
+```
+Changing the datatypes of the variables.
+
+```{r}
+data$success <- as.factor(data$success)
+data$Group <- as.factor(data$Group)
+data$AttackType <- as.factor(data$AttackType)
+data$Target_type <- as.factor(data$Target_type)
+data$Weapon_Type <- as.factor(data$Weapon_Type)
+
+data$casualities <- as.integer(data$casualities)
+data$Killed <- as.integer(data$Killed)
+data$Wounded <- as.integer(data$Wounded)
+
+str(data)
+```
+Saving the cleaned data set.
+
+```{r}
+library(writexl)
+write_xlsx(data, "C:/Users/darsh/Documents/Global_terrorism_data_cleaned_01.xlsx")
+```
