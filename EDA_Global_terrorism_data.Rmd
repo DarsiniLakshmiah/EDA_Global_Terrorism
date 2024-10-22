@@ -1,0 +1,278 @@
+---
+title: "Exploratory Data Analysis in R"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    number_sections: true
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r init , include=FALSE}
+# Loading necessary libraries
+
+library(ezids)
+```
+
+```{r setup, include=FALSE}
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+# knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+```
+
+#### Importing the necessary libraries
+```{R}
+library(dplyr)
+library(tidyverse)  
+library(lubridate)  
+library(ggplot2)    
+library(wordcloud)
+
+```
+```{r}
+library(readxl)
+df=read_xlsx("D:/Githubfordatamining/FA24-DATS6101-11/Project1/EDA_Global_Terrorism/Global_terrorism_data_cleaned_01.xlsx")
+
+head(data)
+str(data)
+
+```
+```{r}
+data$success <- as.factor(data$success)
+data$Group <- as.factor(data$Group)
+data$AttackType <- as.factor(data$AttackType)
+data$Target_type <- as.factor(data$Target_type)
+data$Weapon_Type <- as.factor(data$Weapon_Type)
+
+data$casualities <- as.integer(data$casualities)
+data$Killed <- as.integer(data$Killed)
+data$Wounded <- as.integer(data$Wounded)
+
+str(data)
+```
+
+
+No of terrorist attacks over the time .
+```{r}
+# Load required library
+library(ggplot2)
+
+# Count the number of incidents by year
+yearly_counts <- table(data$Year)
+
+# Convert to a data frame
+yearly_counts_df <- as.data.frame(yearly_counts)
+colnames(yearly_counts_df) <- c("Year", "Total_Incidents")
+
+# Convert Year to numeric for proper plotting
+yearly_counts_df$Year <- as.numeric(as.character(yearly_counts_df$Year))
+
+# Plotting the frequency of incidents over time as a line graph
+ggplot(yearly_counts_df, aes(x = Year, y = Total_Incidents)) +
+  geom_line(color = "steelblue", size = 1) +  # Line graph
+  geom_point(color = "red", size = 2) +  # Optional: Add points at each year
+  labs(title = "Frequency of Terrorist Activities Over Time",
+       x = "Year", 
+       y = "Number of Incidents") +
+  scale_x_continuous(breaks = yearly_counts_df$Year) +  # Set x-axis to show all years
+  theme_minimal() +  # Optional: A clean theme
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+
+```
+Terrorist attacks by region 
+```{r}
+# Create a table of Year and Region counts from the sampled data
+region_counts_sample <- table(data$Year,data$Region)
+region_counts_sample_df <- as.data.frame(region_counts_sample)
+
+# Rename columns for clarity
+colnames(region_counts_sample_df) <- c("Year", "Region", "Freq")
+
+region_counts_sample_df$Region <- as.factor(region_counts_sample_df$Region)
+
+# Plotting with sampled data
+
+library(ggplot2)
+ggplot(region_counts_sample_df, aes(x = as.numeric(as.character(Year)), y = Freq, fill = Region)) +
+  geom_area(position = 'stack') +
+  labs(title = "Terrorist Activities by Region Over Time",
+       x = "Year",
+       y = "Number of Attacks") +
+  theme_minimal()
+
+```
+
+Number of attacks happened with different types of terrorist attacks.
+```{r}
+# Count tactics used in attacks
+tactics_count <- table(data$AttackType)
+
+# Convert to a data frame and sort
+tactics_count_df <- as.data.frame(tactics_count)
+tactics_count_df <- tactics_count_df[order(-tactics_count_df$Freq),]
+
+# Set margins to allow for long x-axis labels
+par(mar = c(10, 5, 4, 2), mgp = c(3, 0.5, 0))  # Adjust bottom margin (first value) to make space
+
+# Plotting the bar chart with adjusted label sizes and vertical orientation
+barplot(tactics_count_df$Freq, 
+        names.arg = tactics_count_df$Var1, 
+        col = "darkorange", 
+        las = 2,                # Rotate labels to be vertical
+        cex.names = 0.6,        # Adjust the font size of the x-axis labels
+        main = "Tactics Employed in Terrorist Attacks",
+        ylab = "Number of Attacks")
+
+```
+
+Outcome of terrorist attacks over the world.
+```{r}
+# Assuming df is your dataframe and 'success' is the relevant column
+# Group by 'success' and calculate the count of each outcome
+succ <- as.data.frame(table(data$success))
+
+# Rename the columns for clarity
+colnames(succ) <- c("success", "count")
+
+# Calculate the total number of attacks (sum of all counts)
+sum_of_attacks <- sum(succ$count)
+
+# Calculate the percentage for each outcome
+succ$percentage <- (succ$count / sum_of_attacks) * 100
+
+# Display the result
+print(succ)
+
+# Plot a bar chart showing the percentage of success
+# Load necessary libraries
+library(ggplot2)
+ggplot(succ, aes(x = factor(success), y = percentage, fill = factor(success))) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Outcome of Terrorist Attacks over the World",
+       x = "Outcome",
+       y = "Percentage") +
+  theme_minimal()
+
+```
+
+```{r}
+length(data$casualties)
+length(data$Year)
+```
+
+```{r}
+# Correlation between incidents and casualties
+correlation <- cor(yearly_counts_df$Total_Incidents, 
+                   tapply(data$casualities, data$Year, sum, na.rm = TRUE))
+
+# Plotting the correlation
+plot(yearly_counts_df$Total_Incidents, 
+     tapply(data$casualities, data$Year, sum, na.rm = TRUE),
+     main = "Correlation between Number of Incidents and Casualties",
+     xlab = "Total Incidents", ylab = "Total Casualties")
+abline(lm(tapply(data$casualities, data$Year, sum, na.rm = TRUE) ~ 
+          yearly_counts_df$Total_Incidents), col = "red")
+```
+Top 10 countries affected.
+```{r}
+# Load required library
+library(ggplot2)
+
+# Count occurrences of each country
+country_counts <- table(data$Country)  # Create a frequency table
+top_countries <- sort(country_counts, decreasing = TRUE)  # Sort in descending order
+top_countries <- top_countries[1:10]  # Get the top 15 countries
+
+# Convert to a data frame for ggplot
+top_countries_df <- data.frame(Country = names(top_countries), Count = as.vector(top_countries))
+
+# Create a bar plot
+ggplot(top_countries_df, aes(x = reorder(Country, Count), y = Count, fill = Count)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_gradientn(colors = c("green", "orange", "red")) + # Gradient from green to orange to red
+  labs(title = "Top Countries Affected", 
+       x = "Countries", 
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + # Rotate x labels
+  theme_minimal() + # Optional: A clean theme
+  theme(legend.position = "none") 
+
+```
+Chi-square test to test the relationship between the Attack type and the sucess rate.
+
+Null Hypothesis (H0): There is no association between AttackType and success.
+
+Alternative Hypothesis (H1): There is an association between AttackType and success.
+
+Since the p-value < 0.05 we reject the null hypothesis that there is a relationship between the attacktype and the sucess rate.
+```{r}
+contingency_table <- table(data$AttackType, data$success)
+
+chi_squared_results <- chisq.test(contingency_table)
+print(chi_squared_results)
+```
+Proportion Test
+Null Hypothesis (H0): The proportion of successful attacks is the same in both countries.
+
+Alternative Hypothesis (H1): The proportion of successful attacks is different in both countries.
+
+p-value > 0.05 fail to reject the null hypothesis. The propotion of attack is same in both countries.
+```{r}
+# Create a subset for two countries
+country_data <- data[data$Country %in% c("Afghanistan", "Iraq"), ]
+
+# Create a contingency table for success
+success_table <- table(country_data$Country, country_data$success)
+
+# Perform the proportion test
+prop_test_results <- prop.test(success_table)
+print(prop_test_results)
+
+```
+T-test
+
+Null Hypothesis (H0): There is no difference in the mean casualties between the two attack types.
+
+Alternative Hypothesis (H1): There is a difference in the mean casualties between the two attack types.
+
+Since p-value < 0.05 we reject the null hypothesis which concludes that there difference in the mean casualities for the two attack types.
+
+```{r}
+
+# Subset the data for two attack types
+attack_data <- data[data$AttackType %in% c("Armed Assault", "Bombing/Explosion"), ]
+
+# Perform a t-test
+t_test_results <- t.test(casualities ~ AttackType, data = attack_data)
+print(t_test_results)
+```
+Chi-sqaure test
+
+Null Hypothesis (H₀): AttackType and Region are independent.
+
+Alternative Hypothesis (H₁): There is an association between AttackType and Region.
+
+Since p-value < 0.05 you reject the null hypothesis.
+
+
+
+```{r}
+attack_table <- table(data$AttackType,data$Region)
+
+chisq.test(attack_table)
+```
+Cramér's V quantifies the strength of the association between AttackType and Region. A value of 0.139 indicates a weak association.
+
+```{r}
+library(vcd)
+
+assoc_stats <- assocstats(attack_table)
+
+assoc_stats
+```
+

@@ -143,3 +143,300 @@ Saving the cleaned data set.
 library(writexl)
 write_xlsx(data, "C:/Users/darsh/Documents/Global_terrorism_data_cleaned_01.xlsx")
 ```
+```{r}
+library(readxl)
+data=read_xlsx("D:/Githubfordatamining/FA24-DATS6101-11/Project1/EDA_Global_Terrorism/Global_terrorism_data_cleaned_01.xlsx")
+str(df)
+```
+```{r}
+data$success <- as.factor(data$success)
+data$Group <- as.factor(data$Group)
+data$AttackType <- as.factor(data$AttackType)
+data$Target_type <- as.factor(data$Target_type)
+data$Weapon_Type <- as.factor(data$Weapon_Type)
+
+data$casualities <- as.integer(data$casualities)
+data$Killed <- as.integer(data$Killed)
+data$Wounded <- as.integer(data$Wounded)
+
+str(data)
+```
+
+```{r}
+# Load required library
+library(ggplot2)
+
+# Count the number of incidents by year
+yearly_counts <- table(data$Year)
+
+# Convert to a data frame
+yearly_counts_df <- as.data.frame(yearly_counts)
+colnames(yearly_counts_df) <- c("Year", "Total_Incidents")
+
+# Convert Year to numeric for proper plotting
+yearly_counts_df$Year <- as.numeric(as.character(yearly_counts_df$Year))
+
+# Plotting the frequency of incidents over time as a line graph
+ggplot(yearly_counts_df, aes(x = Year, y = Total_Incidents)) +
+  geom_line(color = "steelblue", size = 1) +  # Line graph
+  geom_point(color = "red", size = 2) +  # Optional: Add points at each year
+  labs(title = "Frequency of Terrorist Activities Over Time",
+       x = "Year", 
+       y = "Number of Incidents") +
+  scale_x_continuous(breaks = yearly_counts_df$Year) +  # Set x-axis to show all years
+  theme_minimal() +  # Optional: A clean theme
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+
+```
+```{r}
+# Create a table of Year and Region counts from the sampled data
+region_counts_sample <- table(data$Year,data$Region)
+region_counts_sample_df <- as.data.frame(region_counts_sample)
+
+# Rename columns for clarity
+colnames(region_counts_sample_df) <- c("Year", "Region", "Freq")
+
+region_counts_sample_df$Region <- as.factor(region_counts_sample_df$Region)
+
+# Plotting with sampled data
+
+library(ggplot2)
+ggplot(region_counts_sample_df, aes(x = as.numeric(as.character(Year)), y = Freq, fill = Region)) +
+  geom_area(position = 'stack') +
+  labs(title = "Terrorist Activities by Region Over Time",
+       x = "Year",
+       y = "Number of Attacks") +
+  theme_minimal()
+
+```
+```{r}
+# Count tactics used in attacks
+tactics_count <- table(data$AttackType)
+
+# Convert to a data frame and sort
+tactics_count_df <- as.data.frame(tactics_count)
+tactics_count_df <- tactics_count_df[order(-tactics_count_df$Freq),]
+
+# Set margins to allow for long x-axis labels
+par(mar = c(10, 5, 4, 2), mgp = c(3, 0.5, 0))  # Adjust bottom margin (first value) to make space
+
+# Plotting the bar chart with adjusted label sizes and vertical orientation
+barplot(tactics_count_df$Freq, 
+        names.arg = tactics_count_df$Var1, 
+        col = "darkorange", 
+        las = 2,                # Rotate labels to be vertical
+        cex.names = 0.6,        # Adjust the font size of the x-axis labels
+        main = "Tactics Employed in Terrorist Attacks",
+        ylab = "Number of Attacks")
+
+```
+```{r}
+ggplot(df, aes(x = AttackType)) + 
+  geom_bar(fill="#69b3a2",color="purple") + 
+  theme_minimal()+
+  labs(title = "Distribution of Attack types",
+       x="Attack type",
+       y="count")+
+  scale_fill_brewer(palette = "Set3") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+```
+What are the most common types of attacks, and how do they vary by region or country?
+
+
+
+
+```{r}
+# Count the number of attacks by country and select the top 10
+top_countries <- df %>%
+  group_by(Country) %>%
+  summarise(Count = n()) %>%
+  top_n(10, Count)
+
+# Plot the top 10 countries
+ggplot(top_countries, aes(x = reorder(Country, -Count), y = Count)) + 
+  geom_bar(stat = "identity", fill="lightblue", color="purple") + 
+  labs(title = "Top 10 Countries with Most Terrorist Attacks",
+       x="Country",
+       y="Count of Attacks") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3")
+
+```
+The above Visualization Which regions or countries have experienced the most attacks over the years, and how has that changed over time?
+Here, the focus is on the top 10 countries with the highest number of attacks, providing a snapshot of where the most incidents have occurred.
+
+```{r}
+
+# Summarize attacks by month and type
+attack_seasonality <- df %>%
+  group_by(Month, AttackType) %>%
+  summarise(attack_count = n())
+
+# Heatmap to show seasonality
+ggplot(attack_seasonality, aes(x = Month, y = AttackType, fill = attack_count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  theme_minimal() +
+  labs(title = "Seasonality of Terrorist Attacks", y = "Attack Type", x = "Month")
+
+
+
+```
+```{r}
+colnames(df)
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+
+
+
+# Grouping data by region and year to count the number of attacks
+attacks_by_region_year <- df%>%
+  group_by(Year, Region) %>%
+  summarise(Attack_Count = n())
+
+# Reshape data for heatmap
+attacks_by_region_pivot <- dcast(attacks_by_region_year, Year ~ Region, value.var = "Attack_Count", fill = 0)
+
+# Plotting heatmap
+ggplot(melt(attacks_by_region_pivot, id.vars = 'Year'), aes(x = variable, y = Year, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "blue") +
+  theme_minimal() +
+  labs(title = "Terror Attacks by Region Over the Years", x = "Region", y = "Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+```
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Summarize the number of attacks by country and year
+country_trends <- df %>%
+  group_by(Year, Country) %>%
+  summarise(Attack_Count = n()) %>%
+  arrange(desc(Attack_Count))
+
+# Filter for the top 10 most affected countries over all years
+top_countries <- country_trends %>%
+  group_by(Country) %>%
+  summarise(Total_Attacks = sum(Attack_Count)) %>%
+  arrange(desc(Total_Attacks)) %>%
+  top_n(10, wt = Total_Attacks)
+
+# Filter the data for these top 10 countries
+country_trends_filtered <- country_trends %>%
+  filter(Country %in% top_countries$Country)
+
+# Plot the trend over the years for the top 10 countries
+ggplot(country_trends_filtered, aes(x = Year, y = Attack_Count, color = Country)) +
+  geom_line(size = 1) +
+  labs(title = "Terror Attacks Over the Years in the Most Affected Countries", 
+       x = "Year", y = "Number of Attacks") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+
+```
+```{r}
+# Summarize the total number of casualties by terrorist group
+group_casualties <- df %>%
+  group_by(Group) %>%
+  summarise(Total_Casualties = sum(casualities, na.rm = TRUE)) %>%
+  arrange(desc(Total_Casualties))
+
+# Filter for the top 10 deadliest groups
+top_groups <- group_casualties %>%
+  top_n(10, wt = Total_Casualties)
+
+# Plot the total casualties caused by the top 10 groups
+ggplot(top_groups, aes(x = reorder(Group, -Total_Casualties), y = Total_Casualties, fill = Group)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Top 10 Deadliest Terrorist Groups by Total Casualties", x = "Terrorist Group", y = "Total Casualties") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+below are based on smart questions
+1. Which regions or countries have experienced the most attacks over the years, and how has that changed over time?
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Grouping the data by Year and Region
+attacks_by_year_region <- df %>%
+  group_by(Year, Region) %>%
+  summarise(Count = n())
+
+# Line plot of attacks over the years by region
+ggplot(attacks_by_year_region, aes(x = Year, y = Count, color = Region)) +
+  geom_line(size = 1.2) +
+  labs(title = "Terrorist Attacks Over the Years by Region",
+       x = "Year",
+       y = "Count of Attacks") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set3") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+2. What are the most common types of attacks, and how do they vary by region or country?
+
+```{r}
+# Grouping by AttackType and Region
+attacks_by_type_region <- df %>%
+  group_by(AttackType, Region) %>%
+  summarise(Count = n())
+
+# Stacked bar chart
+ggplot(attacks_by_type_region, aes(x = Region, y = Count, fill = AttackType)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Attack Types by Region",
+       x = "Region",
+       y = "Count of Attacks") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+
+4. Which weapon types result in the highest casualties, and are there trends in the use of different weapons over time?
+
+```{r}
+# Grouping by Year and Weapon_Type
+weapon_trends <- df %>%
+  group_by(Year, Weapon_Type) %>%
+  summarise(Total_Casualties = sum(casualities))
+
+# Line plot
+ggplot(weapon_trends, aes(x = Year, y = Total_Casualties, color = Weapon_Type)) +
+  geom_line(size = 1.2) +
+  labs(title = "Casualties by Weapon Types Over Time",
+       x = "Year",
+       y = "Total Casualties") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set3") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+
+
+
+
+

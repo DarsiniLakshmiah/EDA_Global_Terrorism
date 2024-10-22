@@ -1,0 +1,89 @@
+---
+title: "project1_sub1"
+author: "Abirham Getie"
+date: "2024-10-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+library(readxl)
+data=read_xlsx("D:/Githubfordatamining/FA24-DATS6101-11/Project1/EDA_Global_Terrorism/Global_terrorism_data_cleaned_01.xlsx")
+str(df)
+```
+
+```{r}
+# Load required library
+library(ggplot2)
+
+# Count occurrences of each country
+country_counts <- table(data$Country)  # Create a frequency table
+top_countries <- sort(country_counts, decreasing = TRUE)  # Sort in descending order
+top_countries <- top_countries[1:10]  # Get the top 15 countries
+
+# Convert to a data frame for ggplot
+top_countries_df <- data.frame(Country = names(top_countries), Count = as.vector(top_countries))
+
+# Create a bar plot
+ggplot(top_countries_df, aes(x = reorder(Country, Count), y = Count, fill = Count)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_gradientn(colors = c("green", "orange", "red")) + # Gradient from green to orange to red
+  labs(title = "Top Countries Affected", 
+       x = "Countries", 
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + # Rotate x labels
+  theme_minimal() + # Optional: A clean theme
+  theme(legend.position = "none") 
+
+```
+
+```{r}
+# Load required library
+library(ggplot2)
+
+# Count the number of incidents by year
+yearly_counts <- table(data$Year)
+
+# Convert to a data frame
+yearly_counts_df <- as.data.frame(yearly_counts)
+colnames(yearly_counts_df) <- c("Year", "Total_Incidents")
+
+# Convert Year to numeric for proper plotting
+yearly_counts_df$Year <- as.numeric(as.character(yearly_counts_df$Year))
+
+# Plotting the frequency of incidents over time as a line graph
+ggplot(yearly_counts_df, aes(x = Year, y = Total_Incidents)) +
+  geom_line(color = "steelblue", size = 1) +  # Line graph
+  geom_point(color = "red", size = 2) +  # Optional: Add points at each year
+  labs(title = "Frequency of Terrorist Activities Over Time",
+       x = "Year", 
+       y = "Number of Incidents") +
+  scale_x_continuous(breaks = yearly_counts_df$Year) +  # Set x-axis to show all years
+  theme_minimal() +  # Optional: A clean theme
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+```
+
