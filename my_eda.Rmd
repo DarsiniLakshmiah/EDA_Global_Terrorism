@@ -1,0 +1,425 @@
+---
+title: "Exploratory Data Analysis in R"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    number_sections: true
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r init , include=FALSE}
+# Loading necessary libraries
+
+library(ezids)
+```
+
+```{r setup, include=FALSE}
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+# knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+```
+
+
+```{r}
+#install.packages("readxl")
+
+library(readxl)
+
+
+data <- read_excel("C:/Users/darsh/Documents/Global_terrorism_data_cleaned_01.xlsx")
+
+head(data)
+str(data)
+
+```
+Title :
+Frequency of success rate terrorist attacks over time.
+
+There is a suddent spike in the terrorist attack on 2014 and it has been gradually decreased from 2014 to 2017. indicating that there has been some counterterrorism measures taken by the government.since 2014 and 2017 has the maximum and minimum success rate I am gonna drill down on what attack type lead to the success rate in both years.
+
+```{r}
+
+# Assuming 'data' is your dataset and contains 'Year' and 'success' columns
+# 'success' column indicates whether the attack was successful (1 for success, 0 for failure)
+
+# Group by Year and success, then count the number of attacks
+yearly_success <- as.data.frame(table(data$Year, data$success))
+colnames(yearly_success) <- c("Year", "Success", "Count")
+
+# Convert 'Year' and 'Success' columns to numeric for proper calculations
+yearly_success$Year <- as.numeric(as.character(yearly_success$Year))
+yearly_success$Success <- as.numeric(as.character(yearly_success$Success))
+
+# Calculate the total number of attacks per year
+total_attacks_per_year <- aggregate(Count ~ Year, data = yearly_success, sum)
+
+# Merge total attacks with the yearly success data
+yearly_success <- merge(yearly_success, total_attacks_per_year, by = "Year")
+colnames(yearly_success)[4] <- "Total_Attacks"
+
+# Calculate the success rate (percentage of successful attacks per year)
+yearly_success$Success_Rate <- (yearly_success$Count / yearly_success$Total_Attacks) * 100
+
+# Filter for successful attacks only (Success == 1)
+yearly_success_only_success <- yearly_success[yearly_success$Success == 1, ]
+
+# Plotting the success rate over time
+library(ggplot2)
+ggplot(yearly_success_only_success, aes(x = Year, y = Success_Rate)) +
+  geom_line(color = "steelblue", size = 1) +  # Line plot
+  geom_point(color = "red", size = 2) +  # Optional: Add points at each year
+  labs(title = "Success Rate of Terrorist Attacks Over Time",
+       x = "Year", 
+       y = "Success Rate (%)") +
+  scale_x_continuous(breaks = yearly_success_only_success$Year) +  # Set x-axis to show all years
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels for readability
+
+```
+
+Outcome of terrorist attacks over the world.
+
+84.5% of terrorist attacks has been successful.
+```{r}
+# Assuming df is your dataframe and 'success' is the relevant column
+# Group by 'success' and calculate the count of each outcome
+succ <- as.data.frame(table(data$success))
+
+# Rename the columns for clarity
+colnames(succ) <- c("success", "count")
+
+# Calculate the total number of attacks (sum of all counts)
+sum_of_attacks <- sum(succ$count)
+
+# Calculate the percentage for each outcome
+succ$percentage <- (succ$count / sum_of_attacks) * 100
+
+# Display the result
+print(succ)
+
+# Plot a bar chart showing the percentage of success
+# Load necessary libraries
+library(ggplot2)
+ggplot(succ, aes(x = factor(success), y = percentage, fill = factor(success))) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Outcome of Terrorist Attacks over the World",
+       x = "Outcome",
+       y = "Percentage") +
+  theme_minimal()
+
+```
+
+From the graph it can be seen that Hostage taking and infrastructure attack has the maximum success rate so that government has to come up with meausres to curb these attacks.
+```{r}
+# Assuming 'data' contains columns: Year, Attack_Type, and success (1 = success, 0 = failure)
+
+# Group by Year, Attack_Type, and success, then count the number of attacks
+attack_type_success <- as.data.frame(table(data$Year, data$AttackType, data$success))
+colnames(attack_type_success) <- c("Year", "Attack_Type", "Success", "Count")
+
+# Convert 'Year' and 'Success' columns to numeric for proper calculations
+attack_type_success$Year <- as.numeric(as.character(attack_type_success$Year))
+attack_type_success$Success <- as.numeric(as.character(attack_type_success$Success))
+
+# Calculate total number of attacks by attack type per year
+total_attacks_per_attack_type <- aggregate(Count ~ Year + Attack_Type, data = attack_type_success, sum)
+
+# Merge total attacks with the success data
+attack_type_success <- merge(attack_type_success, total_attacks_per_attack_type, by = c("Year", "Attack_Type"))
+colnames(attack_type_success)[5] <- "Total_Attacks"
+
+# Calculate the success rate for each attack type (percentage of successful attacks)
+attack_type_success$Success_Rate <- (attack_type_success$Count / attack_type_success$Total_Attacks) * 100
+
+# Filter for successful attacks only (Success == 1)
+attack_type_success_only_success <- attack_type_success[attack_type_success$Success == 1, ]
+
+# Filter for the year 2014 only
+attack_type_2014 <- attack_type_success_only_success[attack_type_success_only_success$Year == 2014, ]
+
+# Plot the success rate for attack types in 2014
+library(ggplot2)
+ggplot(attack_type_2014, aes(x = reorder(Attack_Type, -Success_Rate), y = Success_Rate, fill = Attack_Type)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  labs(title = "Success Rate of Terrorist Attacks by Attack Type in 2014",
+       x = "Attack Type", 
+       y = "Success Rate (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for readability
+  guides(fill = FALSE)  # Hide legend since each bar is already labeled
+
+
+```
+Tabular form of the data with success rate more then 90% in 2014.
+
+```{r}
+
+# Filter the data for the year 2014
+attack_type_2014 <- attack_type_success_only_success[attack_type_success_only_success$Year == 2014, ]
+
+# Define the threshold for high success rate (e.g., success rate > 70%)
+high_success_rate_2014 <- attack_type_2014[attack_type_2014$Success_Rate > 90, ]
+
+# Display the high success rate attack types for 2014 using print()
+print(high_success_rate_2014)
+
+# Optionally, display the table in a neat format using kable
+library(knitr)
+kable(high_success_rate_2014, caption = "High Success Rate Attack Types in 2014")
+
+
+```
+It is seen from the graph that success rate of  armed assault has been decresed from 2014 to 2017. I wanted to check if this decrease in armed assault is correlated with the decrease in the casualities.
+
+```{r}
+# Assuming 'data' contains columns: Year, Attack_Type, and success (1 = success, 0 = failure)
+
+# Group by Year, Attack_Type, and success, then count the number of attacks
+attack_type_success <- as.data.frame(table(data$Year, data$AttackType, data$success))
+colnames(attack_type_success) <- c("Year", "Attack_Type", "Success", "Count")
+
+# Convert 'Year' and 'Success' columns to numeric for proper calculations
+attack_type_success$Year <- as.numeric(as.character(attack_type_success$Year))
+attack_type_success$Success <- as.numeric(as.character(attack_type_success$Success))
+
+# Calculate total number of attacks by attack type per year
+total_attacks_per_attack_type <- aggregate(Count ~ Year + Attack_Type, data = attack_type_success, sum)
+
+# Merge total attacks with the success data
+attack_type_success <- merge(attack_type_success, total_attacks_per_attack_type, by = c("Year", "Attack_Type"))
+colnames(attack_type_success)[5] <- "Total_Attacks"
+
+# Calculate the success rate for each attack type (percentage of successful attacks)
+attack_type_success$Success_Rate <- (attack_type_success$Count / attack_type_success$Total_Attacks) * 100
+
+# Filter for successful attacks only (Success == 1)
+attack_type_success_only_success <- attack_type_success[attack_type_success$Success == 1, ]
+
+# Filter for the year 2017 only
+attack_type_2014 <- attack_type_success_only_success[attack_type_success_only_success$Year == 2017, ]
+
+# Plot the success rate for attack types in 2014
+library(ggplot2)
+ggplot(attack_type_2014, aes(x = reorder(Attack_Type, -Success_Rate), y = Success_Rate, fill = Attack_Type)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  labs(title = "Success Rate of Terrorist Attacks by Attack Type in 2017",
+       x = "Attack Type", 
+       y = "Success Rate (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for readability
+  guides(fill = FALSE)  # Hide legend since each bar is already labeled
+
+
+```
+Tabular from of the data with success rate more than 90%
+
+```{r}
+# Filter the data for the year 2014
+attack_type_2014 <- attack_type_success_only_success[attack_type_success_only_success$Year == 2017, ]
+
+# Define the threshold for high success rate (e.g., success rate > 70%)
+high_success_rate_2014 <- attack_type_2014[attack_type_2014$Success_Rate > 90, ]
+
+# Display the high success rate attack types for 2014 using print()
+print(high_success_rate_2014)
+
+# Optionally, display the table in a neat format using kable
+library(knitr)
+kable(high_success_rate_2014, caption = "High Success Rate Attack Types in 2017")
+```
+
+
+ It is evident from the graph that as the success rate of armed attack declined the number of casualitities decreased.
+ 
+```{r}
+
+
+# Ensure 'success' and 'Casualties' columns are numeric
+data$success <- as.numeric(as.character(data$success))
+data$Casualties <- as.numeric(as.character(data$casualities))
+
+# Filter the data for Armed Assaults in 2014 and 2017 only
+armed_assaults <- data[data$Year %in% c(2014, 2017) & data$AttackType == "Armed Assault", ]
+
+# Filter only successful incidents (success = 1)
+successful_assaults <- armed_assaults[armed_assaults$success == 1, ]
+
+# Calculate the number of successful incidents (success = 1)
+armed_assault_success <- aggregate(success ~ Year, data = successful_assaults, FUN = length)
+
+# Calculate the total number of armed assaults (both successful and unsuccessful)
+total_assaults <- aggregate(success ~ Year, data = armed_assaults, FUN = length)
+colnames(total_assaults)[2] <- "Total_Assaults"
+
+# Merge the successful incidents and total assaults
+armed_assault_rate <- merge(armed_assault_success, total_assaults, by = "Year")
+colnames(armed_assault_rate)[2] <- "Successful_Incidents"  # Rename for clarity
+armed_assault_rate$Success_Rate <- (armed_assault_rate$Successful_Incidents / armed_assault_rate$Total_Assaults) * 100
+
+
+
+```
+
+```{r}
+
+# Calculate the total number of casualties for each year
+armed_assault_casualties <- aggregate(Casualties ~ Year, data = armed_assaults, FUN = sum)
+
+```
+
+```{r}
+
+# Merge the success rate data with the casualties data
+armed_assault_summary <- merge(armed_assault_rate, armed_assault_casualties, by = "Year")
+
+```
+
+```{r}
+
+# Plot the success rate and casualties for 2014 and 2017
+library(ggplot2)
+
+# Create a plot with two y-axes: one for success rate and one for casualties
+ggplot(armed_assault_summary, aes(x = as.factor(Year))) +  
+  geom_bar(aes(y = Success_Rate, fill = "Success Rate"), stat = "identity", position = "dodge", width = 0.4) +
+  geom_line(aes(y = Casualties / 10, group = 1, color = "Casualties"), size = 1.5) +  # Line for casualties (scaled)
+  geom_point(aes(y = Casualties / 10, color = "Casualties"), size = 3) +  # Points for casualties (scaled)
+  scale_y_continuous(name = "Success Rate (%)", sec.axis = sec_axis(~.*10, name = "Casualties")) +  # Secondary y-axis for casualties
+  labs(title = "Success Rate and Casualties for Armed Assaults (2014 vs 2017)",
+       x = "Year",
+       fill = "Legend",
+       color = "Legend") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+print(armed_assault_rate)
+```
+Most of the terrorist attacks are Unknown. From the known attakcs ISIL AND TALIBAN the pattern flucuates.
+```{r}
+# Step 2: Aggregate the number of attacks by group, year, target type, and weapon type
+group_behavior <- aggregate(data$Group, 
+                            by = list(Year = data$Year, 
+                                      Group = data$Group, 
+                                      Target_type = data$Target_type, 
+                                      Weapon_Type = data$Weapon_Type), 
+                            FUN = length)
+
+# Rename the columns for clarity
+names(group_behavior)[5] <- "Attack_Count"
+
+# Step 3: Find the top 3 terrorist groups based on the total number of attacks
+total_attacks_by_group <- aggregate(data$Group, by = list(Group = data$Group), FUN = length)
+names(total_attacks_by_group)[2] <- "Total_Attacks"
+top_groups <- head(total_attacks_by_group[order(-total_attacks_by_group$Total_Attacks), "Group"], 3)
+
+print(top_groups)
+
+# Step 4: Filter the data to include only the top 3 groups
+top_group_data <- group_behavior[group_behavior$Group %in% top_groups, ]
+
+# Step 5: Plot a bar graph showing the activity of the top 3 groups over time
+ggplot(top_group_data, aes(x = Year, y = Attack_Count, fill = Group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Activity of Top 3 Terrorist Groups Over Time",
+       x = "Year",
+       y = "Number of Attacks") +
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "blue", "green")) +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+
+
+
+```
+Major attacks by taliban has done with explosives and firearms.
+
+```{r}
+
+# Step 2: Aggregate the number of attacks by year, group, and weapon type
+group_weapon_trends <- aggregate(data$Group, 
+                                 by = list(Year = data$Year, Group = data$Group, Weapon_Type = data$Weapon_Type), 
+                                 FUN = length)
+
+# Rename columns for clarity
+names(group_weapon_trends) <- c("Year", "Group", "Weapon_Type", "Attack_Count")
+
+# Step 3: Filter for a specific group (e.g., 'Taliban')
+taliban_weapon_trends <- subset(group_weapon_trends, Group == "Taliban")
+
+# Step 4: Plot weapon type trends for the Taliban
+ggplot(taliban_weapon_trends, aes(x = Year, y = Attack_Count, color = Weapon_Type, group = Weapon_Type)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Change in Weapon Types",
+       x = "Year",
+       y = "Number of Attacks",
+       color = "Weapon Type") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+
+```
+
+The major use of ISIL is explosives only predonminantly.
+```{r}
+# Step 2: Aggregate the number of attacks by year, group, and weapon type
+group_weapon_trends <- aggregate(data$Group, 
+                                 by = list(Year = data$Year, Group = data$Group, Weapon_Type = data$Weapon_Type), 
+                                 FUN = length)
+
+# Rename columns for clarity
+names(group_weapon_trends) <- c("Year", "Group", "Weapon_Type", "Attack_Count")
+
+# Step 3: Filter for a specific group (e.g., 'Taliban')
+taliban_weapon_trends <- subset(group_weapon_trends, Group == "Islamic State of Iraq and the Levant (ISIL)")
+
+# Step 4: Plot weapon type trends for the Taliban
+ggplot(taliban_weapon_trends, aes(x = Year, y = Attack_Count, color = Weapon_Type, group = Weapon_Type)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Change in Weapon Types",
+       x = "Year",
+       y = "Number of Attacks",
+       color = "Weapon Type") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+
+```
+The major use of the weapons of the unknown group are also explosives and fire
+```{r}
+
+# Step 2: Aggregate the number of attacks by year, group, and weapon type
+group_weapon_trends <- aggregate(data$Group, 
+                                 by = list(Year = data$Year, Group = data$Group, Weapon_Type = data$Weapon_Type), 
+                                 FUN = length)
+
+# Rename columns for clarity
+names(group_weapon_trends) <- c("Year", "Group", "Weapon_Type", "Attack_Count")
+
+# Step 3: Filter for a specific group (e.g., 'Taliban')
+taliban_weapon_trends <- subset(group_weapon_trends, Group == "Unknown")
+
+# Step 4: Plot weapon type trends for the Taliban
+ggplot(taliban_weapon_trends, aes(x = Year, y = Attack_Count, color = Weapon_Type, group = Weapon_Type)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Change in Weapon Types",
+       x = "Year",
+       y = "Number of Attacks",
+       color = "Weapon Type") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+
+```
+```
