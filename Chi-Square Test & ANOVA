@@ -1,0 +1,50 @@
+# Define a function for performing Chi-Square tests
+perform_chi_square_test <- function(contingency_table, label1, label2) {
+  chi_square_result <- chisq.test(contingency_table, simulate.p.value = TRUE)
+  
+  cat("\nChi-Square Test between", label1, "and", label2, "\n")
+  cat("H0: There is no association between", label1, "and", label2, "\n")
+  cat("H1: There is an association between", label1, "and", label2, "\n")
+  print(chi_square_result)
+  
+  # Print conclusion based on p-value
+  if (chi_square_result$p.value < 0.05) {
+    cat("Result: Reject H0. Significant association between", label1, "and", label2, "\n")
+  } else {
+    cat("Result: Fail to reject H0. No significant association between", label1, "and", label2, "\n")
+  }
+}
+
+# Perform Chi-Square Tests
+cat("\n### Performing Chi-Square Tests ###\n")
+
+# Chi-Square Test: Attack Type vs. Target Type
+contingency_table_attack_target <- table(df$AttackType, df$Target_type)
+perform_chi_square_test(contingency_table_attack_target, "Attack Type", "Target Type")
+
+# Chi-Square Test: Attack Type vs. Success
+contingency_table_attack_success <- table(df$AttackType, df$success)
+perform_chi_square_test(contingency_table_attack_success, "Attack Type", "Success")
+
+
+# Define a function for performing ANOVA tests
+perform_anova_test <- function(formula, data, label1, label2) {
+  anova_result <- aov(formula, data = data)
+  
+  cat("\nTwo-Way ANOVA between", label1, "and", label2, "\n")
+  cat("H0: There is no interaction between", label1, "and", label2, "affecting the casualties.\n")
+  cat("H1: There is an interaction between", label1, "and", label2, "affecting the casualties.\n")
+  print(summary(anova_result))
+  
+  cat("95% confidence interval used.\n")
+}
+
+# Perform Two-Way ANOVA Tests
+cat("\n### Performing Two-Way ANOVA ###\n")
+
+# Two-Way ANOVA: Region and Attack Type
+perform_anova_test(log_casualties ~ Region * AttackType, df, "Region", "Attack Type")
+
+# Two-Way ANOVA: Attack Type and Success
+perform_anova_test(log_casualties ~ AttackType * success, df, "Attack Type", "Success")
+
