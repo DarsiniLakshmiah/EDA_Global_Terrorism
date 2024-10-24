@@ -1,0 +1,80 @@
+---
+title: "part2"
+author: "Abirham Getie"
+date: "2024-10-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+library(readxl)
+data=read_xlsx("D:/Githubfordatamining/FA24-DATS6101-11/Project1/EDA_Global_Terrorism/Global_terrorism_data_cleaned_01.xlsx")
+str(df)
+```
+
+
+```{r}
+# Create a table of Year and Region counts from the sampled data
+region_counts_sample <- table(data$Year,data$Region)
+region_counts_sample_df <- as.data.frame(region_counts_sample)
+
+# Rename columns for clarity
+colnames(region_counts_sample_df) <- c("Year", "Region", "Freq")
+
+region_counts_sample_df$Region <- as.factor(region_counts_sample_df$Region)
+
+# Plotting with sampled data
+
+library(ggplot2)
+ggplot(region_counts_sample_df, aes(x = as.numeric(as.character(Year)), y = Freq, fill = Region)) +
+  geom_area(position = 'stack') +
+  labs(title = "Terrorist Activities by Region Over Time",
+       x = "Year",
+       y = "Number of Attacks") +
+  theme_minimal()
+
+```
+```{r}
+# Count tactics used in attacks
+tactics_count <- table(data$AttackType)
+
+# Convert to a data frame and sort
+tactics_count_df <- as.data.frame(tactics_count)
+tactics_count_df <- tactics_count_df[order(-tactics_count_df$Freq),]
+
+# Set margins to allow for long x-axis labels
+par(mar = c(10, 5, 4, 2), mgp = c(3, 0.5, 0))  # Adjust bottom margin (first value) to make space
+
+# Plotting the bar chart with adjusted label sizes and vertical orientation
+barplot(tactics_count_df$Freq, 
+        names.arg = tactics_count_df$Var1, 
+        col = "darkorange", 
+        las = 2,                # Rotate labels to be vertical
+        cex.names = 0.6,        # Adjust the font size of the x-axis labels
+        main = "Tactics Employed in Terrorist Attacks",
+        ylab = "Number of Attacks")
+
+```
