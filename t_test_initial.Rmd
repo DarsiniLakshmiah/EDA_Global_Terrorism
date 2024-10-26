@@ -1,0 +1,33 @@
+---
+title: "Hypothesis Testing"
+output: html_document
+date: "2024-10-26"
+---
+
+
+```{r setup, include=FALSE}
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+# knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+```
+
+# --------------------------------------------------------
+# 1. Load Necessary Libraries
+# --------------------------------------------------------
+```{r}
+library(tidyverse)  # For data wrangling and visualization
+library(readxl)     # For reading Excel files
+library(corrplot)   # For correlation matrices
+library(e1071)      # For skewness and kurtosis calculations
+```
+
+# --------------------------------------------------------
+# 2. Load Dataset
+# --------------------------------------------------------
+```{r}
+# Load your dataset from the Excel file
+df <- read_excel("/Users/rahularvind/Documents/6101 files/Project 1/Global_terrorism_data_cleaned_01.xlsx")
+
+```
