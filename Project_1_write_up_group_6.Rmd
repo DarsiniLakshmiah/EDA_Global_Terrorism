@@ -1,5 +1,5 @@
 ---
-title: "Project Write-Up"
+title: "Exploratory Data Analysis of Global Terrorism"
 author: "Darsini Lakshmiah, Rahul Arvind, Abirham Getie, Anurag Surve"
 date: "`r Sys.Date()`"
 output:
