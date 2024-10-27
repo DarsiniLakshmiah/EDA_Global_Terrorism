@@ -1,0 +1,821 @@
+---
+title: "Project Write-Up"
+author: "Darsini Lakshmiah, Rahul Arvind, Abirham Getie, Anurag Surve"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+# knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+
+```  
+# 1. Introduction
+This project focuses on exploring and analyzing the Global Terrorism Database to better understand the patterns and trends of terrorist activities across different regions and time periods. Our primary goal is to identify the characteristics of terrorist incidents, such as the types of attacks, targeted regions, success rates, and their impacts in terms of casualties. This analysis will contribute to a data-driven approach in understanding the nature of terrorism and help inform policy and security measures.
+
+To achieve our objectives, we utilized R for data preprocessing, exploratory data analysis (EDA), and statistical inference. The dataset, consisting of over 181,000 records, contains variables such as year, country, region, attack type, casualties, and other relevant metadata. Our analysis includes cleaning and transforming the dataset, deriving meaningful metrics such as casualties, and conducting various statistical analyses including correlation, t-tests, chi-square tests, and ANOVA to uncover significant patterns and relationships. We also visualized key findings to highlight the frequency and nature of terrorist activities over time and across regions.
+
+This exploratory study reveals critical insights into the global patterns of terrorism, aiming to aid policymakers and security agencies in understanding regional threats, attack methods, and the factors contributing to successful or unsuccessful incidents. The findings emphasize the need for focused counter-terrorism measures and resource allocation to mitigate the impact of terrorist attacks.
+
+# 2. About the Dataset and Metadata
+
+The dataset used for this project is the [Global Terrorism Database](https://www.kaggle.com/datasets/START-UMD/gtd), which contains detailed information about terrorist incidents around the world from 1970 to 2017. The dataset includes over 181,000 records, each representing a distinct terrorist incident, with various attributes that help describe the context, impact, and details of each event. Below, we describe the key variables in the dataset:
+```{r dropdown="true", echo=TRUE}
+# Load the knitr library
+library(knitr)
+
+# Create a data frame that summarizes the key variables in the dataset
+data_summary = data.frame(
+  Variable = c("Year", "Country", "Attack Type", "Success", "Casualties", "Killed", "Wounded", "Target", "Group"),
+  Description = c(
+    "Year in which the terrorist incident occurred.",
+    "Country where the terrorist incident took place.",
+    "Type of attack carried out (e.g., bombing, armed assault, assassination).",
+    "Indicates whether the terrorist attack achieved its intended outcome (1 for success, 0 for failure).",
+    "The total number of people affected by the attack, combining both killed and wounded.",
+    "Number of people who died as a result of the terrorist attack.",
+    "Number of people injured in the terrorist attack.",
+    "Describes the target of the terrorist attack (e.g., civilians, military, government institutions).",
+    "Identifies the terrorist group responsible for the attack."
+  )
+)
+
+# Use kable() to display the table with a caption
+kable(data_summary, caption = "Summary of Key Variables in the Global Terrorism Dataset")
+```
+These variables provide a comprehensive overview of each terrorist incident, allowing us to analyze patterns related to geographical locations, attack methods, success rates, and impacts on victims. The dataset also contains other metadata, such as the region, motive, weapon type, and specific details about the nature of each attack.
+
+# 3. Data Handling
+## 3.1 Dataset Description
+The dataset used for this project contains over 181,000 records of terrorist incidents with multiple variables such as year, country, region, attack type, casualties, and group involved.
+
+## 3.2 Data Preprocessing
+To prepare the data, we performed a series of preprocessing steps including cleaning, handling missing values, and transforming data types.
+
+### 3.2.1 Reading the Data and Checking Structure
+```{r dropdown="true", echo=TRUE}
+library(readxl)
+data = read_excel("C:\\Users\\anusu\\OneDrive\\Desktop\\GWU\\First Year\\DATS - 6101 - 11 fall 2024\\Project 1 EDA\\Global_terrorism_raw_data.xlsx")
+head(data)
+str(data)
+```
+
+### 3.2.2 Checking Column Names
+```{r dropdown="true", echo=TRUE}
+column_names = colnames(data)
+print(column_names)
+```
+
+### 3.2.3 Renaming Columns for Better Readability
+```{r dropdown="true", echo=TRUE}
+names_to_rename = c("iyear" = "Year",
+                    "imonth" = "Month",
+                    "iday" = "Day",
+                    "country_txt" = "Country",
+                    "provstate" = "State",
+                    "region_txt" = "Region",
+                    "attacktype1_txt" = "Attack_Type",
+                    "nkill" = "Killed",
+                    "nwound" = "Wounded",
+                    "gname" = "Group",
+                    "targtype1_txt" = "Target_type",
+                    "weaptype1_txt" = "Weapon_Type",
+                    "motive" = "Motive")
+
+for (old_name in names(names_to_rename)) {
+  new_name = names_to_rename[old_name]
+  colnames(data)[colnames(data) == old_name] = new_name
+}
+```
+
+### 3.2.4 Selecting Relevant Columns
+```{r dropdown="true", echo=TRUE}
+data = data[, c("Year", "Month", "Day", "Country", "State", "Region", 
+                "Attack_Type", "Killed", "Wounded", "Group", "Target_type", 
+                "Weapon_Type", "Motive", "success")]
+```
+
+### 3.2.5 Checking for Missing Values and Data Structure
+```{r dropdown="true", echo=TRUE}
+head(data)
+colSums(is.na(data))
+
+dim(data)
+str(data)
+```
+
+### 3.2.6 Adding a Calculative Column for Casualties
+```{r dropdown="true", echo=TRUE}
+data$casualities = data$Killed + data$Wounded
+colnames(data)
+```
+
+### 3.2.7 Handling Missing Values
+```{r dropdown="true", echo=TRUE}
+median_killed = median(data$Killed, na.rm = TRUE)
+median_wounded = median(data$Wounded, na.rm = TRUE)
+median_casualities = median(data$casualities, na.rm = TRUE)
+
+data$Killed[is.na(data$Killed)] = median_killed
+data$Wounded[is.na(data$Wounded)] = median_wounded
+data$casualities[is.na(data$casualities)] = median_casualities
+
+data$Motive[is.na(data$Motive)] = "Unknown"
+
+colSums(is.na(data))
+```
+
+### 3.2.8 Changing Data Types
+```{r dropdown="true", echo=TRUE}
+data$success = as.factor(data$success)
+data$Group = as.factor(data$Group)
+data$Attack_Type = as.factor(data$Attack_Type)
+data$Target_type = as.factor(data$Target_type)
+data$Weapon_Type = as.factor(data$Weapon_Type)
+
+data$casualities = as.integer(data$casualities)
+data$Killed = as.integer(data$Killed)
+data$Wounded = as.integer(data$Wounded)
+
+str(data)
+```
+
+# 4. Summary Statistics
+In this section, we present the summary statistics of the dataset, which provide an overview of the key characteristics of the data.
+
+### 4.1 Summary Statistics
+```{r dropdown="true", echo=TRUE}
+summary(data)
+```
+
+### 4.2 Key Observations
+- The **Year** variable shows the range of data from 1970 to 2017, which helps us understand the historical timeline of terrorist activities.
+- The **Country** variable contains records from multiple countries, with some countries having significantly more incidents than others, indicating potential regional hotspots for terrorism.
+- The **Attack_Type** variable shows the frequency of different types of attacks, with some attack types being much more common than others, such as bombings and armed assaults.
+- The **Killed** and **Wounded** columns show a wide range in the number of casualties, with many incidents resulting in zero casualties while others have a significant impact.
+- The **Casualties** column, which combines the number of killed and wounded, highlights the overall impact of each incident, showing the severity of certain attacks.
+- The **Success** variable indicates that a majority of the attacks were successful, providing insight into the effectiveness of terrorist operations over time.
+
+These key observations help us identify patterns related to the frequency, severity, and success of terrorist incidents, which can be further explored in the following sections of the analysis.
+
+# 5. Correlation Analysis
+In this section, we analyze the correlation between the numerical variables in the dataset to understand relationships between the key metrics such as casualties, killed, and wounded.
+
+### 5.1 Correlation Analysis
+```{r dropdown="true", echo=TRUE}
+library(tidyverse)
+# Select numerical columns
+numeric_columns = data %>% select(Killed, Wounded, casualities)
+
+# Calculate correlation matrix
+cor_matrix = cor(numeric_columns, use = "complete.obs")
+
+# Load required library
+library(corrplot)
+
+# Improved heatmap visualization
+corrplot(cor_matrix,
+         method = "color",                # Use colored squares
+         addCoef.col = "black",            # Add coefficients in black text
+         number.cex = 1,                   # Increase text size for numbers
+         tl.col = "black",                 # Change axis labels to black
+         tl.srt = 45,                      # Rotate axis labels
+         col = colorRampPalette(c("red", "white", "blue"))(200),  # Adjust color palette
+         cl.pos = "r",                     # Position color legend on the right
+         cl.cex = 0.8,                     # Adjust legend text size
+         diag = FALSE                      # Do not show the diagonal
+)
+```
+
+### 5.2 Key Observations
+- The **Killed** and **Wounded** variables have a positive correlation, indicating that incidents that result in more deaths also tend to result in more injuries.
+- The **Casualties** variable is strongly correlated with both **Killed** and **Wounded**, as it is derived from the sum of these two variables.
+- The correlations provide insights into the severity of attacks, highlighting that incidents with higher casualties tend to affect both the number of deaths and injuries proportionally.
+
+These correlations help us understand the relationships between the key metrics of terrorist incidents and the extent of their impact, providing a basis for further analysis in subsequent sections.
+
+# 6. Visualization
+In this section, we use visualizations to illustrate key patterns in the dataset. Visualizations help in understanding complex relationships in the data, highlighting trends, and identifying anomalies.
+
+### 6.1 Top 10 Countries Affected
+This visualization helps us understand which countries have been most affected by terrorist incidents, providing insights into regional hotspots.
+```{r dropdown="true", echo=TRUE}
+# Load required library
+library(ggplot2)
+
+# Count occurrences of each country
+country_counts = table(data$Country)  # Create a frequency table
+top_countries = sort(country_counts, decreasing = TRUE)  # Sort in descending order
+top_countries = top_countries[1:10]  # Get the top 10 countries
+
+# Convert to a data frame for ggplot
+top_countries_data = data.frame(Country = names(top_countries), Count = as.vector(top_countries))
+
+# Create a bar plot
+ggplot(top_countries_data, aes(x = reorder(Country, Count), y = Count, fill = Count)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_gradientn(colors = c("green", "orange", "red")) +  # Gradient from green to orange to red
+  labs(title = "Top Countries Affected", 
+       x = "Countries", 
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +  # Rotate x labels
+  theme_minimal() +  # Optional: A clean theme
+  theme(legend.position = "none")
+```
+
+### 6.2 Frequency of Terrorist Attacks Over Time
+This visualization helps us understand how the frequency of terrorist incidents has changed over the years, revealing trends that could be tied to historical events or changing geopolitical landscapes.
+```{r dropdown="true", echo=TRUE}
+# Count the number of incidents by year
+yearly_counts = table(data$Year)
+
+# Convert to a data frame
+yearly_counts_data = as.data.frame(yearly_counts)
+colnames(yearly_counts_data) = c("Year", "Total_Incidents")
+
+# Convert Year to numeric for proper plotting
+yearly_counts_data$Year = as.numeric(as.character(yearly_counts_data$Year))
+
+# Plotting the frequency of incidents over time as a line graph
+ggplot(yearly_counts_data, aes(x = Year, y = Total_Incidents)) +
+  geom_line(color = "steelblue", size = 1) +  # Line graph
+  geom_point(color = "red", size = 2) +  # Optional: Add points at each year
+  labs(title = "Frequency of Terrorist Activities Over Time",
+       x = "Year", 
+       y = "Number of Incidents") +
+  scale_x_continuous(breaks = yearly_counts_data$Year) +  # Set x-axis to show all years
+  theme_minimal() +  # Optional: A clean theme
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+### 6.3 Terrorist Attacks by Region
+This visualization shows how terrorist incidents are distributed across different regions over time, providing insights into regional differences in the frequency and nature of terrorist activities.
+```{r dropdown="true", echo=TRUE}
+# Create a table of Year and Region counts from the sampled data
+region_counts_sample = table(data$Year, data$Region)
+region_counts_sample_data = as.data.frame(region_counts_sample)
+
+# Rename columns for clarity
+colnames(region_counts_sample_data) = c("Year", "Region", "Freq")
+
+region_counts_sample_data$Region = as.factor(region_counts_sample_data$Region)
+
+# Plotting with sampled data
+ggplot(region_counts_sample_data, aes(x = as.numeric(as.character(Year)), y = Freq, fill = Region)) +
+  geom_area(position = 'stack') +
+  labs(title = "Terrorist Activities by Region Over Time",
+       x = "Year",
+       y = "Number of Attacks") +
+  theme_minimal()
+```
+
+### 6.4 Type of Terrorist Attacks
+This visualization helps us understand the prevalence of different types of attacks, which can provide insights into changing tactics and the impact of counter-terrorism measures.
+```{r dropdown="true", echo=TRUE}
+# Count tactics used in attacks
+tactics_count = table(data$Attack_Type)
+
+# Convert to a data frame and sort
+tactics_count_data = as.data.frame(tactics_count)
+tactics_count_data = tactics_count_data[order(-tactics_count_data$Freq),]
+
+# Set margins to allow for long x-axis labels
+par(mar = c(10, 5, 4, 2), mgp = c(3, 0.5, 0))  # Adjust bottom margin (first value) to make space
+
+# Plotting the bar chart with adjusted label sizes and vertical orientation
+barplot(tactics_count_data$Freq, 
+        names.arg = tactics_count_data$Var1, 
+        col = "darkorange", 
+        las = 2,                # Rotate labels to be vertical
+        cex.names = 0.6,        # Adjust the font size of the x-axis labels
+        main = "Tactics Employed in Terrorist Attacks",
+        ylab = "Number of Attacks")
+```
+### 6.5 Seasonality of Terrorist Attacks
+This visualization helps us understand if there are specific months during which terrorist activities are more frequent, potentially indicating a seasonal pattern.
+```{r dropdown="true", echo=TRUE}
+# Attack type seasonality over different months
+library(dplyr)
+
+# Prepare data for seasonality analysis
+monthly_attack_type = data %>%
+  group_by(Month, Attack_Type) %>%
+  summarise(Count = n(), .groups = 'drop')
+
+# Ensure that the months are treated as an ordered factor
+monthly_attack_type$Month = factor(monthly_attack_type$Month, levels = 1:12,
+                                   labels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"),
+                                   ordered = TRUE)
+
+# Plotting the attack type seasonality as a heatmap
+ggplot(monthly_attack_type, aes(x = Month, y = Attack_Type, fill = Count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lavender", high = "blue", name = "Attack Count") +
+  labs(title = "Seasonality of Terrorist Attacks",
+       x = "Month", y = "Attack Type") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### 6.6 Key Observations from Visualizations
+- **Top 10 Countries Affected**: The bar chart shows that a small group of countries has experienced the majority of terrorist attacks, indicating concentrated regional conflicts and threats.
+- **Frequency Over Time**: The line graph reveals fluctuating trends in terrorist activities, with specific years showing peaks, possibly related to major global events or regional conflicts.
+- **Attacks by Region**: The area chart demonstrates how terrorist activities are distributed across different regions, highlighting areas that have been disproportionately affected.
+- **Type of Attacks**: The bar chart displaying attack types helps in understanding which methods are most commonly employed by terrorist groups, allowing for targeted policy measures.
+- **Seasonality**: The heatmap visualization indicates whether there are specific times of the year when terrorist activities peak, which can help in forecasting and prevention efforts.
+
+These visualizations provide a comprehensive overview of the temporal and geographical distribution of terrorist incidents, their severity, and the tactics employed, which can inform targeted counter-terrorism efforts.
+
+# 7. Insights into Terrorist Attacks and their Success Rates
+In this section, we answer specific research questions to understand the patterns and impacts of terrorism globally.
+
+### 7.1 What percentage of terrorist attacks globally have been successful?
+```{r dropdown="true", echo=TRUE}
+# Group by 'success' and calculate the count of each outcome
+succ = as.data.frame(table(data$success))
+
+# Rename the columns for clarity
+colnames(succ) = c("success", "count")
+
+# Calculate the total number of attacks (sum of all counts)
+sum_of_attacks = sum(succ$count)
+
+# Calculate the percentage for each outcome
+succ$percentage = (succ$count / sum_of_attacks) * 100
+
+# Display the result
+print(succ)
+
+# Plot a bar chart showing the percentage of success
+ggplot(succ, aes(x = factor(success), y = percentage, fill = factor(success))) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Outcome of Terrorist Attacks over the World",
+       x = "Outcome",
+       y = "Percentage") +
+  theme_minimal()
+```
+
+### 7.2 Success Rate of Terrorist Attacks Over Time (2013-2017)
+```{r dropdown="true", echo=TRUE}
+# Group by Year and success, then count the number of attacks
+yearly_success = as.data.frame(table(data$Year, data$success))
+colnames(yearly_success) = c("Year", "Success", "Count")
+
+# Convert 'Year' and 'Success' columns to numeric for proper calculations
+yearly_success$Year = as.numeric(as.character(yearly_success$Year))
+yearly_success$Success = as.numeric(as.character(yearly_success$Success))
+
+# Calculate the total number of attacks per year
+total_attacks_per_year = aggregate(Count ~ Year, data = yearly_success, sum)
+
+# Merge total attacks with the yearly success data
+yearly_success = merge(yearly_success, total_attacks_per_year, by = "Year")
+colnames(yearly_success)[4] = "Total_Attacks"
+
+# Calculate the success rate (percentage of successful attacks per year)
+yearly_success$Success_Rate = (yearly_success$Count / yearly_success$Total_Attacks) * 100
+
+# Filter for successful attacks only (Success == 1)
+yearly_success_only_success = yearly_success[yearly_success$Success == 1, ]
+
+# Plotting the success rate over time
+ggplot(yearly_success_only_success, aes(x = Year, y = Success_Rate)) +
+  geom_line(color = "steelblue", size = 1) +  # Line plot
+  geom_point(color = "red", size = 2) +  # Optional: Add points at each year
+  labs(title = "Success Rate of Terrorist Attacks Over Time",
+       x = "Year", 
+       y = "Success Rate (%)") +
+  scale_x_continuous(breaks = yearly_success_only_success$Year) +  # Set x-axis to show all years
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels for readability
+```
+
+### 7.3 Success Rate by Type of Attack in 2014 and 2017
+```{r dropdown="true", echo=TRUE}
+# Group by Year, Attack_Type, and success, then count the number of attacks
+attack_type_success = as.data.frame(table(data$Year, data$Attack_Type, data$success))
+colnames(attack_type_success) = c("Year", "Attack_Type", "Success", "Count")
+
+# Convert 'Year' and 'Success' columns to numeric for proper calculations
+attack_type_success$Year = as.numeric(as.character(attack_type_success$Year))
+attack_type_success$Success = as.numeric(as.character(attack_type_success$Success))
+
+# Calculate total number of attacks by attack type per year
+total_attacks_per_attack_type = aggregate(Count ~ Year + Attack_Type, data = attack_type_success, sum)
+
+# Merge total attacks with the success data
+attack_type_success = merge(attack_type_success, total_attacks_per_attack_type, by = c("Year", "Attack_Type"))
+colnames(attack_type_success)[5] = "Total_Attacks"
+
+# Calculate the success rate for each attack type (percentage of successful attacks)
+attack_type_success$Success_Rate = (attack_type_success$Count / attack_type_success$Total_Attacks) * 100
+
+# Filter for successful attacks only (Success == 1)
+attack_type_success_only_success = attack_type_success[attack_type_success$Success == 1, ]
+
+# Filter for the year 2014 only
+attack_type_2014 = attack_type_success_only_success[attack_type_success_only_success$Year == 2014, ]
+
+# Plot the success rate for attack types in 2014
+ggplot(attack_type_2014, aes(x = reorder(Attack_Type, -Success_Rate), y = Success_Rate, fill = Attack_Type)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  labs(title = "Success Rate of Terrorist Attacks by Attack Type in 2014",
+       x = "Attack Type", 
+       y = "Success Rate (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for readability
+  guides(fill = FALSE)  # Hide legend since each bar is already labeled
+```
+
+### 7.4 Correlation Between Success Rate and Casualties (2014 vs 2017)
+```{r dropdown="true", echo=TRUE}
+# Ensure 'success' and 'casualities' columns are numeric
+data$success = as.numeric(as.character(data$success))
+data$casualities = as.numeric(as.character(data$casualities))
+
+# Filter the data for Armed Assaults in 2014 and 2017
+armed_assaults = data[data$Year %in% c(2014, 2017) & data$Attack_Type == "Armed Assault", ]
+
+# Calculate the number of successful incidents (success = 1)
+successful_assaults = armed_assaults[armed_assaults$success == 1, ]
+
+# Calculate the total number of successful incidents per year
+armed_assault_success = aggregate(success ~ Year, data = successful_assaults, FUN = length)
+
+# Calculate total number of armed assaults
+total_assaults = aggregate(success ~ Year, data = armed_assaults, FUN = length)
+colnames(total_assaults)[2] = "Total_Attacks"
+
+# Merge successful incidents with total assaults
+armed_assault_rate = merge(armed_assault_success, total_assaults, by = "Year")
+armed_assault_rate$Success_Rate = (armed_assault_rate$success / armed_assault_rate$Total_Attacks) * 100
+
+# Calculate total number of casualties for each year
+armed_assault_casualties = aggregate(casualities ~ Year, data = armed_assaults, FUN = sum)
+
+# Merge success rate data with casualties data
+armed_assault_summary = merge(armed_assault_rate, armed_assault_casualties, by = "Year")
+
+# Plot success rate and casualties for 2014 and 2017
+ggplot(armed_assault_summary, aes(x = as.factor(Year))) +  
+  geom_bar(aes(y = Success_Rate, fill = "Success Rate"), stat = "identity", position = "dodge", width = 0.4) +
+  geom_line(aes(y = casualities / 10, group = 1, color = "Casualties"), size = 1.5) +
+  geom_point(aes(y = casualities / 10, color = "Casualties"), size = 3) +
+  scale_y_continuous(name = "Success Rate (%)", sec.axis = sec_axis(~.*10, name = "Casualties")) +
+  labs(title = "Success Rate and Casualties for Armed Assaults (2014 vs 2017)",
+       x = "Year",
+       fill = "Legend",
+       color = "Legend") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+print(armed_assault_rate)
+```
+### 7.4 Key Observations
+- The **Success Rate** of terrorist attacks has shown variations over the years, indicating potential shifts in counter-terrorism effectiveness.
+- Specific years may have seen improvements or declines in prevention measures, which can be further investigated to identify contributing factors.
+
+These analyses provide insights into the effectiveness of counter-terrorism efforts globally and over time, helping to identify areas where improvements can be made.
+
+## 7.5 Top 3 Terrorist Groups
+
+In this section, we analyze the top terrorist groups based on the number of attacks they carried out, providing insights into their activity levels and trends over time.
+
+### 7.5.1 Identifying the Top 3 Groups
+
+
+```{r dropdown="true", echo=TRUE}
+# Aggregate the number of attacks by group, year, target type, and weapon type
+group_behavior = aggregate(data$Group, 
+                            by = list(Year = data$Year, 
+                                      Group = data$Group, 
+                                      Target_type = data$Target_type, 
+                                      Weapon_Type = data$Weapon_Type), 
+                            FUN = length)
+
+# Rename the columns for clarity
+names(group_behavior)[5] = "Attack_Count"
+
+# Find the top 3 terrorist groups based on the total number of attacks
+total_attacks_by_group = aggregate(data$Group, by = list(Group = data$Group), FUN = length)
+names(total_attacks_by_group)[2] = "Total_Attacks"
+top_groups = head(total_attacks_by_group[order(-total_attacks_by_group$Total_Attacks), "Group"], 3)
+
+print(top_groups)
+
+# Filter the data to include only the top 3 groups
+top_group_data = group_behavior[group_behavior$Group %in% top_groups, ]
+
+# Plot a bar graph showing the activity of the top 3 groups over time
+ggplot(top_group_data, aes(x = Year, y = Attack_Count, fill = Group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Activity of Top 3 Terrorist Groups Over Time",
+       x = "Year",
+       y = "Number of Attacks") +
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "blue", "green")) +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+```
+
+### 7.5.2 Key Observations
+- The **Taliban** and **ISIL** are among the most active terrorist groups, with a fluctuating number of attacks over time.
+- A significant portion of the attacks are carried out by unknown groups, indicating a lack of available intelligence on these actors.
+- The activity levels of these groups may be influenced by political and military interventions in the regions where they operate.
+
+## 7.6 Weapon Evolution Between Taliban and ISIL
+
+This section analyzes the weapon usage trends of two prominent terrorist groups: **Taliban** and **ISIL**. Understanding the evolution of weapon types can help in developing targeted countermeasures.
+
+### 7.6.1 Weapon Types Used by the Taliban
+
+```{r dropdown="true", echo=TRUE}
+# Aggregate the number of attacks by year, group, and weapon type
+group_weapon_trends = aggregate(data$Group, 
+                                 by = list(Year = data$Year, Group = data$Group, Weapon_Type = data$Weapon_Type), 
+                                 FUN = length)
+
+# Rename columns for clarity
+names(group_weapon_trends) = c("Year", "Group", "Weapon_Type", "Attack_Count")
+
+# Filter for a specific group (e.g., 'Taliban')
+taliban_weapon_trends = subset(group_weapon_trends, Group == "Taliban")
+
+# Plot weapon type trends for the Taliban
+ggplot(taliban_weapon_trends, aes(x = Year, y = Attack_Count, color = Weapon_Type, group = Weapon_Type)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Change in Weapon Types Used by the Taliban",
+       x = "Year",
+       y = "Number of Attacks",
+       color = "Weapon Type") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+```
+
+### 7.6.2 Weapon Types Used by ISIL
+
+```{r dropdown="true", echo=TRUE}
+# Filter for a specific group (e.g., 'Islamic State of Iraq and the Levant (ISIL)')
+isil_weapon_trends = subset(group_weapon_trends, Group == "Islamic State of Iraq and the Levant (ISIL)")
+
+# Plot weapon type trends for ISIL
+ggplot(isil_weapon_trends, aes(x = Year, y = Attack_Count, color = Weapon_Type, group = Weapon_Type)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Change in Weapon Types Used by ISIL",
+       x = "Year",
+       y = "Number of Attacks",
+       color = "Weapon Type") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+```
+
+### 7.6.3 Weapon Types Used by Unknown Groups
+
+```{r dropdown="true", echo=TRUE}
+# Filter for a specific group (e.g., 'Unknown')
+unknown_weapon_trends = subset(group_weapon_trends, Group == "Unknown")
+
+# Plot weapon type trends for Unknown groups
+ggplot(unknown_weapon_trends, aes(x = Year, y = Attack_Count, color = Weapon_Type, group = Weapon_Type)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Change in Weapon Types Used by Unknown Groups",
+       x = "Year",
+       y = "Number of Attacks",
+       color = "Weapon Type") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),
+        plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 12))
+```
+
+### 7.6.4 Key Observations
+- The **Taliban** frequently uses explosives and firearms, with a noticeable increase in certain years, possibly related to intensified conflicts.
+- **ISIL** shows a predominant reliance on explosives, indicating a preference for large-scale attacks that maximize casualties.
+- **Unknown groups** also primarily use explosives, which suggests that explosives are the preferred weapon for groups seeking anonymity.
+
+These insights into weapon usage can help in developing targeted interventions to disrupt the supply chains of specific weapon types and mitigate the impact of terrorist activities.
+
+# 8. Assessing Normality
+We use skewness and kurtosis to assess the normality of the **casualties** variable. Skewness measures the asymmetry of the data distribution, while kurtosis measures the "tailedness" or the presence of outliers.
+
+```{r dropdown="true", echo=TRUE}
+library(e1071)
+# Checking skewness and kurtosis to assess normality of the 'casualities' variable
+cat("\n### Checking Skewness and Kurtosis (Original Data) ###\n")
+skewness_value = skewness(data$casualities, na.rm = TRUE)
+kurtosis_value = kurtosis(data$casualities, na.rm = TRUE)
+cat("Skewness (original casualties): ", skewness_value, "\n")
+cat("Kurtosis (original casualties): ", kurtosis_value, "\n")
+
+# Log transformation to reduce skewness and kurtosis
+data$log_casualties = log1p(data$casualities)
+
+cat("\n### Checking Skewness and Kurtosis (Log-Transformed Data) ###\n")
+skewness_value = skewness(data$log_casualties, na.rm = TRUE)
+kurtosis_value = kurtosis(data$log_casualties, na.rm = TRUE)
+cat("Skewness (log-transformed casualties): ", skewness_value, "\n")
+cat("Kurtosis (log-transformed casualties): ", kurtosis_value, "\n")
+```
+
+### 8.1 Key Observations
+- The original **casualties** data shows high skewness and kurtosis, indicating that the distribution is not normal. This suggests the presence of extreme values or outliers.
+- After applying a log transformation, the skewness and kurtosis values are reduced, indicating that the data distribution is closer to normal. This transformation helps in meeting the assumptions of parametric tests, making the subsequent analyses more reliable.
+
+By addressing the normality issue, we ensure that our statistical tests yield valid and interpretable results.
+
+# 9. Hypothesis Testing: T-Tests on Log-Transformed Data
+
+### 9.1 Research Question : Are there significant differences in casualties between regions or attack types?
+To answer this research question, we conducted T-tests to determine if there are significant differences in log-transformed casualty numbers between different regions and types of attacks. Specifically, we tested:
+
+
+### 9.2 Performing T-Tests
+
+```{r t_tests,dropdown="true", echo=TRUE, message=FALSE, warning=FALSE}
+# Define a function for performing T-tests
+perform_t_test = function(group1, group2, label1, label2) {
+  t_test_result = t.test(group1, group2)
+  
+  cat("\nT-Test between", label1, "and", label2, "\n")
+  cat("H0: The means of", label1, "and", label2, "are equal.\n")
+  cat("H1: The means of", label1, "and", label2, "are not equal.\n")
+  print(t_test_result)
+  
+  # Print conclusion based on p-value
+  if (t_test_result$p.value < 0.05) {
+    cat("Result: Reject H0. Significant difference between", label1, "and", label2, "\n")
+  } else {
+    cat("Result: Fail to reject H0. No significant difference between", label1, "and", label2, "\n")
+  }
+}
+```
+### 9.2.1 Is there a significant difference in casualty numbers between South Asia and the Middle East & North Africa?
+```{r dropdown="true", echo=TRUE}
+south_asia_casualities = data %>% filter(Region == "South Asia") %>% pull(log_casualties)
+middle_east_casualities = data %>% filter(Region == "Middle East & North Africa") %>% pull(log_casualties)
+perform_t_test(south_asia_casualities, middle_east_casualities, "South Asia", "Middle East & North Africa")
+```
+### 9.2.2 Is there a significant difference in casualty numbers between Western Europe and North America?
+```{r dropdown="true", echo=TRUE}
+western_europe_casualities = data %>% filter(Region == "Western Europe") %>% pull(log_casualties)
+north_america_casualities = data %>% filter(Region == "North America") %>% pull(log_casualties)
+perform_t_test(western_europe_casualities, north_america_casualities, "Western Europe", "North America")
+
+```
+### 9.2.3 Is there a significant difference in casualty numbers between Bombing/Explosion and Armed Assault attack types?
+
+```{r dropdown="true", echo=TRUE}
+bombing_casualities = data %>% filter(Attack_Type == "Bombing/Explosion") %>% pull(log_casualties)
+armed_assault_casualities = data %>% filter(Attack_Type == "Armed Assault") %>% pull(log_casualties)
+perform_t_test(bombing_casualities, armed_assault_casualities, "Bombing/Explosion", "Armed Assault")
+```
+
+### 9.3 Key Observations
+- **South Asia vs. Middle East & North Africa**: The T-test helps us determine if there is a significant difference in casualty numbers between South Asia and the Middle East & North Africa. If p < 0.05, we conclude there is a significant difference between these regions, implying different levels of severity or frequency of attacks.
+- **Western Europe vs. North America**: We also compare Western Europe and North America to understand regional differences. The result will help us determine if there is a significant discrepancy in casualties, potentially indicating varying levels of vulnerability or differences in security measures.
+- **Bombing/Explosion vs. Armed Assault**: Comparing these attack types allows us to examine whether different methods of attack yield significantly different casualty outcomes, which could be crucial for understanding attack severity.
+
+# 10. Addressing Research Questions Using Chi-Square Tests
+
+This section addresses the research questions regarding associations between the type of terrorist attack, target type, and the likelihood of success. We use Chi-Square tests to determine if there are significant associations between these variables.
+
+```{r dropdown="true", echo=TRUE}
+# Define a function for performing Chi-Square tests
+perform_chi_square_test = function(contingency_table, label1, label2) {
+  chi_square_result = chisq.test(contingency_table, simulate.p.value = TRUE)
+  
+  cat("\nChi-Square Test between", label1, "and", label2, "\n")
+  cat("H0: There is no association between", label1, "and", label2, "\n")
+  cat("H1: There is an association between", label1, "and", label2, "\n")
+  print(chi_square_result)
+  
+  # Print conclusion based on p-value
+  if (chi_square_result$p.value < 0.05) {
+    cat("Result: Reject H0. Significant association between", label1, "and", label2, "\n")
+  } else {
+    cat("Result: Fail to reject H0. No significant association between", label1, "and", label2, "\n")
+  }
+}
+```
+
+### 10.1 Is there an association between the type of attack (e.g., Bombing, Armed Assault) and the target type (e.g., civilians, military).
+```{r dropdown="true", echo=TRUE}
+# Chi-Square Test: Attack Type vs. Target Type
+contingency_table_attack_target = table(data$Attack_Type, data$Target_type)
+perform_chi_square_test(contingency_table_attack_target, "Attack Type", "Target Type")
+```
+### 10.2 Is there a relationship between the type of terrorist attack and the likelihood of success?
+
+```{r dropdown="true", echo=TRUE}
+# Chi-Square Test: Attack Type vs. Success
+contingency_table_attack_success = table(data$Attack_Type, data$success)
+perform_chi_square_test(contingency_table_attack_success, "Attack Type", "Success")
+```
+
+### 10.3 Key Observations
+- **Attack Type vs. Target Type**: The Chi-Square test helps us determine if there is a significant association between the type of attack (e.g., Bombing, Armed Assault) and the type of target (e.g., civilians, military). If p < 0.05, we conclude that there is a significant association between attack type and target type, implying that certain types of attacks are more likely to target specific types of individuals or groups.
+- **Attack Type vs. Success**: The test also assesses whether there is a relationship between the type of terrorist attack and the likelihood of it being successful. If p < 0.05, we conclude that different types of attacks may have different success rates, which could help in understanding how specific methods impact the likelihood of successful execution.
+
+# 11. Addressing Research Questions Using Two-Way ANOVA
+
+This section addresses the research questions regarding the interaction effects of region, attack type, and success on the number of casualties. We use Two-Way ANOVA to determine if there are significant interaction effects between these variables.
+
+```{r dropdown="true", echo=TRUE}
+# Define a function for determining the significance of p-values
+decide_significance = function(p_value) {
+  if (p_value < 0.05) {
+    return("Reject H0: The interaction is statistically significant.")
+  } else {
+    return("Fail to reject H0: The interaction is not statistically significant.")
+  }
+}
+
+# Define a function for performing ANOVA tests with outcome interpretation
+perform_anova_test = function(formula, data, label1, label2) {
+  anova_result = aov(formula, data = data)
+  anova_summary = summary(anova_result)
+  
+  # Extract p-value of interaction term
+  p_value = anova_summary[[1]]$`Pr(>F)`[3]  # Assuming the interaction is the third row
+  
+  cat("\nTwo-Way ANOVA between", label1, "and", label2, "\n")
+  cat("H0: There is no interaction between", label1, "and", label2, "affecting the casualties.\n")
+  cat("H1: There is an interaction between", label1, "and", label2, "affecting the casualties.\n")
+  
+  print(anova_summary)
+  cat("\nDecision: ", decide_significance(p_value), "\n")
+  cat("95% confidence interval used.\n")
+}
+```
+### 11.1 How does the interaction between region and attack type affect the number of casualties?
+```{r dropdown="true", echo=TRUE}
+cat("\n## 11.1 How does the interaction between region and attack type affect the number of casualties?\n")
+cat("We conducted a Two-Way ANOVA to determine whether there is a significant interaction between the region and the type of attack affecting the number of casualties.\n")
+
+# Two-Way ANOVA: Region and Attack Type
+perform_anova_test(log_casualties ~ Region * Attack_Type, data, "Region", "Attack Type")
+```
+### 11.2 Is there an interaction between the type of attack and the success rate in determining the number of casualties?
+```{r dropdown="true", echo=TRUE}
+cat("\n## 11.2 Is there an interaction between the type of attack and the success rate in determining the number of casualties?\n")
+cat("We performed a Two-Way ANOVA to determine if there is a significant interaction between the type of attack and its success rate, affecting the number of casualties.\n")
+
+# Two-Way ANOVA: Attack Type and Success
+perform_anova_test(log_casualties ~ Attack_Type * success, data, "Attack Type", "Success")
+```
+
+### 11.3 Key Observations
+- **Region and Attack Type**: The Two-Way ANOVA helps us determine if there is an interaction effect between **Region** and **Attack Type** that significantly affects the number of casualties. If p < 0.05, it implies that the region and attack type together have a significant impact on the severity of incidents.
+- **Attack Type and Success**: The analysis also helps us understand if there is an interaction between **Attack Type** and **Success** in determining the number of casualties. A significant interaction effect would imply that the success of an attack is influenced by the attack type, with varying outcomes in the number of casualties.
+
+
+
+# 10. Policy and Security Implications
+
+This section explores the broader policy and security implications derived from our analysis of terrorist activity. By examining the patterns in attack types, regions, and the outcomes, we provide recommendations that can be used to improve counterterrorism strategies.
+
+- **Resource Allocation**: The high casualty rates from bombings suggest a need for increased investment in bomb-detection technologies and intelligence in regions prone to such attacks.
+
+- **Predictive Analysis Caution**: While patterns between attack types and target selection could help develop predictive models, terrorist attacks are influenced by numerous factors—political, socio-economic, ideological—which makes it difficult to predict attacks purely based on past incidents. A more holistic approach is required for accurate forecasting.
+
+- **Regional Focus**: Given the concentration of terrorist activity in regions like the Middle East and South Asia, international collaboration and region-specific counterterrorism efforts should be a priority to reduce global terrorism impacts.
+
+- **Casualty Reduction Strategies**: Since certain attack types (like bombings) consistently result in higher casualties, prioritizing emergency preparedness and response in vulnerable regions could significantly reduce the number of fatalities.
+
+# 11. Limitations and Future Research
+
+This section outlines the limitations of the current analysis and provides suggestions for future research to improve the understanding of terrorism dynamics.
+
+- **Scope of Analysis**: While this study provides valuable insights, it doesn't explore deeper causes of terrorism, such as political, economic, or ideological factors. Future research could incorporate these elements for a more comprehensive understanding.
+
+- **Prediction Challenges**: Given the unpredictable nature of terrorism, predicting attacks based solely on historical patterns is challenging, as the root causes and motivations behind attacks are diverse and complex. Future models should account for broader socio-political contexts and external data sources.
+
+- **Next Steps**: Future research could integrate external factors such as economic indicators and political instability to improve the understanding of terrorism dynamics and enhance predictive accuracy.
+
+# 12. Conclusion
+
+The exploratory data analysis has revealed key patterns in terrorist activities, emphasizing the importance of attack types, target selection, and regional hotspots.
+
+- A targeted, data-driven approach to counterterrorism can improve policy and security responses, minimizing casualties and the overall impact of terrorism.
+- However, predicting future terrorist attacks requires more than analyzing past trends. Incorporating political, social, and ideological factors is crucial to developing more effective and nuanced counterterrorism strategies.
+
