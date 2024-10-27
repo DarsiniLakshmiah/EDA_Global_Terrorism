@@ -31,3 +31,47 @@ library(e1071)      # For skewness and kurtosis calculations
 df <- read_excel("/Users/rahularvind/Documents/6101 files/Project 1/Global_terrorism_data_cleaned_01.xlsx")
 
 ```
+
+```{r}
+#Check for Normality (Skewness & Kurtosis)
+# --------------------------------------------------------
+# Checking skewness and kurtosis to assess normality of the 'casualities' variable
+cat("\n### Checking Skewness and Kurtosis (Original Data) ###\n")
+skewness_value <- skewness(df$casualities, na.rm = TRUE)
+kurtosis_value <- kurtosis(df$casualities, na.rm = TRUE)
+cat("Skewness (original casualties): ", skewness_value, "\n")
+cat("Kurtosis (original casualties): ", kurtosis_value, "\n")
+
+# Log transformation to reduce skewness and kurtosis
+df$log_casualties <- log1p(df$casualities)
+
+cat("\n### Checking Skewness and Kurtosis (Log-Transformed Data) ###\n")
+skewness_value <- skewness(df$log_casualties, na.rm = TRUE)
+kurtosis_value <- kurtosis(df$log_casualties, na.rm = TRUE)
+cat("Skewness (log-transformed casualties): ", skewness_value, "\n")
+cat("Kurtosis (log-transformed casualties): ", kurtosis_value, "\n")
+```
+
+```{r}
+# --------------------------------------------------------
+# 7. Hypothesis Testing: T-Tests on Log-Transformed Data
+# --------------------------------------------------------
+
+# Define a function for performing T-tests
+perform_t_test <- function(group1, group2, label1, label2) {
+  t_test_result <- t.test(group1, group2)
+  
+  cat("\nT-Test between", label1, "and", label2, "\n")
+  cat("H0: The means of", label1, "and", label2, "are equal.\n")
+  cat("H1: The means of", label1, "and", label2, "are not equal.\n")
+  print(t_test_result)
+  
+  # Print conclusion based on p-value
+  if (t_test_result$p.value < 0.05) {
+    cat("Result: Reject H0. Significant difference between", label1, "and", label2, "\n")
+  } else {
+    cat("Result: Fail to reject H0. No significant difference between", label1, "and", label2, "\n")
+  }
+}
+```
+
