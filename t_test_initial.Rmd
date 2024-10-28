@@ -75,3 +75,11 @@ perform_t_test <- function(group1, group2, label1, label2) {
 }
 ```
 
+```{r}
+# Perform T-Tests with log-transformed data
+cat("\n### Performing T-Tests ###\n")
+south_asia_casualities <- df %>% filter(Region == "South Asia") %>% pull(log_casualties)
+middle_east_casualities <- df %>% filter(Region == "Middle East & North Africa") %>% pull(log_casualties)
+perform_t_test(south_asia_casualities, middle_east_casualities, "South Asia", "Middle East & North Africa")
+```
+
