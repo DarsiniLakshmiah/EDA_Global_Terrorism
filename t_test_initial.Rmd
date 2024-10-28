@@ -85,5 +85,9 @@ perform_t_test(south_asia_casualities, middle_east_casualities, "South Asia", "M
 western_europe_casualities <- df %>% filter(Region == "Western Europe") %>% pull(log_casualties)
 north_america_casualities <- df %>% filter(Region == "North America") %>% pull(log_casualties)
 perform_t_test(western_europe_casualities, north_america_casualities, "Western Europe", "North America")
+
+bombing_casualities <- df %>% filter(AttackType == "Bombing/Explosion") %>% pull(log_casualties)
+armed_assault_casualities <- df %>% filter(AttackType == "Armed Assault") %>% pull(log_casualties)
+perform_t_test(bombing_casualities, armed_assault_casualities, "Bombing/Explosion", "Armed Assault")
 ```
 
